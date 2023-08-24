@@ -50,7 +50,6 @@ type Amounts struct {
 }
 
 func main() {
-
 	apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain := getVars()
 	fmt.Println(groupID, bambooConnector, companyDomain)
 
@@ -60,14 +59,9 @@ func main() {
 		panic(err)
 	}
 
-	ctx := context.Background()
-	creds, err := kolla.Credentials(ctx, mondayConnector, customerID)
-	if err != nil {
-		fmt.Println("Error getting credentials.")
-		return
-	}
-
+	creds := getCreds(kolla, mondayConnector, customerID)
 	mondayKey := creds.Token
+
 	url := "https://api.monday.com/v2"
 
 	// Getting monday.com account details.
@@ -456,6 +450,16 @@ func getVars() (string, string, string, string, string, string, string) {
 	}
 
 	return apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain
+}
+
+func getCreds(kolla *kc.Client, connector string, customerID string) *kc.Credentials {
+	ctx := context.Background()
+	creds, err := kolla.Credentials(ctx, connector, customerID)
+	if err != nil {
+		fmt.Println("Error getting credentials.")
+		return nil
+	}
+	return creds
 }
 
 func getResponse(resp *http.Response) map[string]interface{} {
