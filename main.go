@@ -79,7 +79,7 @@ func main() {
 	responseJSON := getResponse(resp)
 	turnPretty(responseJSON)
 
-	// Getting monday.com boards.
+	// Getting monday.com board.
 	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
 	payloadBytes = getPayload(query)
 
@@ -92,6 +92,76 @@ func main() {
 
 	responseJSON = getResponse(resp)
 	turnPretty(responseJSON)
+
+	name := "test"
+	id := "1"
+	start := "2023-09-09"
+	end := "2023-09-09"
+	status := "approved"
+	created := "2023-09-09"
+	fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
+
+	column_values := `"{\"text\":\"` + id + `\",
+								\"status\":\"` + status + `\",
+								\"date4\":\"` + start + `\",
+								\"date\":\"` + end + `\",
+								\"created1\":\"` + created + `\"}"`
+
+	// Updating an item.
+	query = `mutation {
+				create_item
+					(
+						board_id: ` + boardID + `,
+						group_id: "` + groupID + `",
+						item_name: "` + name + `",
+						column_values: ` + column_values + `
+					)
+					{
+						id
+					}
+				}`
+
+	data := map[string]interface{}{
+		"query": query,
+	}
+
+	jsonData2, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return
+	}
+
+	client := &http.Client{}
+	req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData2))
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", mondayKey)
+
+	response, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return
+	}
+	defer response.Body.Close()
+
+	var responseData map[string]interface{}
+	err = json.NewDecoder(response.Body).Decode(&responseData)
+	if err != nil {
+		fmt.Println("Error decoding JSON:", err)
+		return
+	}
+
+	prettyJSON, err := json.MarshalIndent(responseData, "", "  ")
+	if err != nil {
+		fmt.Println("Error formatting JSON:", err)
+		return
+	}
+
+	fmt.Println(string(prettyJSON))
 
 	/*
 		// Deleting group.
