@@ -559,8 +559,27 @@ func createEmployee(boardID string, groupID string, url string, mondayKey string
 	resp := doRequest(req)
 
 	responseJSON := getResponse(resp)
-	fmt.Println(responseJSON)
-	fmt.Println(responseJSON["account_id"])
+	itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
+	fmt.Println(itemID)
+
+	data := itemID
+
+	filePath := "item-ids.txt"
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(data)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return
+	}
+
+	fmt.Println("Data written to file successfully.")
 
 	turnPretty(responseJSON)
 }
