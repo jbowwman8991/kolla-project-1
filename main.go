@@ -51,49 +51,8 @@ type Amounts struct {
 
 func main() {
 
-	var apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain string
-
-	// Open the file
-	file, err := os.Open("env-vars.txt")
-	if err != nil {
-		fmt.Println("Error opening the file:", err)
-		return
-	}
-	defer file.Close()
-
-	// Read the file content
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		// Parse the variable (assuming it's a simple key=value format)
-		parts := strings.Split(line, "=")
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			if key == "APIKEY" {
-				apiKey = value
-			} else if key == "MONDAYCONNECTOR" {
-				mondayConnector = value
-			} else if key == "CUSTOMERID" {
-				customerID = value
-			} else if key == "BOARDID" {
-				boardID = value
-			} else if key == "GROUPID" {
-				groupID = value
-				fmt.Println(key, groupID)
-			} else if key == "BAMBOOCONNECTOR" {
-				bambooConnector = value
-				fmt.Println(key, bambooConnector)
-			} else if key == "COMPANYDOMAIN" {
-				companyDomain = value
-				fmt.Println(key, companyDomain)
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading the file:", err)
-	}
+	apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain := getVars()
+	fmt.Println(groupID, bambooConnector, companyDomain)
 
 	kolla, err := kc.New(apiKey)
 	if err != nil {
@@ -454,6 +413,49 @@ func main() {
 
 		fmt.Println(string(prettyJSON))
 	*/
+}
+
+func getVars() (string, string, string, string, string, string, string) {
+	var apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain string
+
+	file, err := os.Open("env-vars.txt")
+	if err != nil {
+		fmt.Println("Error opening the file:", err)
+		return "", "", "", "", "", "", ""
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, "=")
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key == "APIKEY" {
+				apiKey = value
+			} else if key == "MONDAYCONNECTOR" {
+				mondayConnector = value
+			} else if key == "CUSTOMERID" {
+				customerID = value
+			} else if key == "BOARDID" {
+				boardID = value
+			} else if key == "GROUPID" {
+				groupID = value
+			} else if key == "BAMBOOCONNECTOR" {
+				bambooConnector = value
+			} else if key == "COMPANYDOMAIN" {
+				companyDomain = value
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading the file:", err)
+		return "", "", "", "", "", "", ""
+	}
+
+	return apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain
 }
 
 func getResponse(resp *http.Response) map[string]interface{} {
