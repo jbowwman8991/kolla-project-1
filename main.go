@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/kollalabs/sdk-go/kc"
@@ -50,7 +53,46 @@ type Amounts struct {
 
 func main() {
 
-	apiKey := "kc.fnpdbmwhd5g2pfsrv2ifueva3e"
+	var apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain string
+
+	// Open the file
+	file, err := os.Open("env-vars.txt")
+	if err != nil {
+		fmt.Println("Error opening the file:", err)
+		return
+	}
+	defer file.Close()
+
+	// Read the file content
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Parse the variable (assuming it's a simple key=value format)
+		parts := strings.Split(line, "=")
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key == "APIKEY" {
+				apiKey = value
+			} else if key == "MONDAYCONNECTOR" {
+				mondayConnector = value
+			} else if key == "CUSTOMERID" {
+				customerID = value
+			} else if key == "BOARDID" {
+				boardID = value
+			} else if key == "GROUPID" {
+				groupID = value
+			} else if key == "BAMBOOCONNECTOR" {
+				bambooConnector = value
+			} else if key == "COMPANYDOMAIN" {
+				companyDomain = value
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading the file:", err)
+	}
 
 	kolla, err := kc.New(apiKey)
 	if err != nil {
@@ -59,9 +101,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	connector := "monday-apikey-86843"
-	customerID := "test"
-	creds, err := kolla.Credentials(ctx, connector, customerID)
+	creds, err := kolla.Credentials(ctx, mondayConnector, customerID)
 	if err != nil {
 		fmt.Println("Error getting credentials.")
 		return
@@ -115,7 +155,7 @@ func main() {
 	fmt.Println(string(prettyJSON))
 
 	// Getting monday.com boards.
-	query = "query { boards (ids: 5032457884) { name state id groups { title id } columns { type } }}"
+	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
 
 	payload = map[string]interface{}{
 		"query": query,
@@ -160,7 +200,7 @@ func main() {
 	fmt.Println(string(prettyJSON))
 
 	// Deleting group.
-	query = `mutation { delete_group (board_id: 5032457884, group_id: "topics") { id deleted } }`
+	query = `mutation { delete_group (board_id: ` + boardID + `, group_id: "` + groupID + `") { id deleted } }`
 
 	data := map[string]interface{}{
 		"query": query,
@@ -206,15 +246,13 @@ func main() {
 
 	// Connecting to bambooHR and getting time off requests.
 	ctx = context.Background()
-	connector = "bamboohr-apikey-93536"
-	creds, err = kolla.Credentials(ctx, connector, customerID)
+	creds, err = kolla.Credentials(ctx, bambooConnector, customerID)
 	if err != nil {
 		fmt.Println("Error getting credentials.")
 		return
 	}
 
 	bambooKey := creds.Token
-	companyDomain := "kolla"
 	today := time.Now()
 	oneMonthFromToday := today.AddDate(0, 1, 0)
 	start := today.Format("2006-01-02")
@@ -283,8 +321,8 @@ func main() {
 		query = `mutation { 
 			create_item 
 				(
-					board_id: 5032457884, 
-					group_id: "topics", 
+					board_id: ` + boardID + `, 
+					group_id: "` + groupID + `", 
 					item_name: "` + name + `", 
 					column_values: ` + column_values + `
 				) 
