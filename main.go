@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/kollalabs/sdk-go/kc"
@@ -50,7 +53,48 @@ type Amounts struct {
 
 func main() {
 
-	apiKey := "kc.fnpdbmwhd5g2pfsrv2ifueva3e"
+	var apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain string
+
+	// Open the file
+	file, err := os.Open("env-vars.txt")
+	if err != nil {
+		fmt.Println("Error opening the file:", err)
+		return
+	}
+	defer file.Close()
+
+	// Read the file content
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Parse the variable (assuming it's a simple key=value format)
+		parts := strings.Split(line, "=")
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key == "APIKEY" {
+				apiKey = value
+			} else if key == "MONDAYCONNECTOR" {
+				mondayConnector = value
+			} else if key == "CUSTOMERID" {
+				customerID = value
+			} else if key == "BOARDID" {
+				boardID = value
+				fmt.Println(key, boardID)
+			} else if key == "GROUPID" {
+				groupID = value
+				fmt.Println(key, groupID)
+			} else if key == "BAMBOOCONNECTOR" {
+				bambooConnector = value
+			} else if key == "COMPANYDOMAIN" {
+				companyDomain = value
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading the file:", err)
+	}
 
 	kolla, err := kc.New(apiKey)
 	if err != nil {
@@ -59,9 +103,7 @@ func main() {
 	}
 
 	ctx := context.Background()
-	connector := "monday-apikey-86843"
-	customerID := "test"
-	creds, err := kolla.Credentials(ctx, connector, customerID)
+	creds, err := kolla.Credentials(ctx, mondayConnector, customerID)
 	if err != nil {
 		fmt.Println("Error getting credentials.")
 		return
@@ -206,15 +248,13 @@ func main() {
 
 	// Connecting to bambooHR and getting time off requests.
 	ctx = context.Background()
-	connector = "bamboohr-apikey-93536"
-	creds, err = kolla.Credentials(ctx, connector, customerID)
+	creds, err = kolla.Credentials(ctx, bambooConnector, customerID)
 	if err != nil {
 		fmt.Println("Error getting credentials.")
 		return
 	}
 
 	bambooKey := creds.Token
-	companyDomain := "kolla"
 	today := time.Now()
 	oneMonthFromToday := today.AddDate(0, 1, 0)
 	start := today.Format("2006-01-02")
