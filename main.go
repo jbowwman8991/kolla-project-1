@@ -68,11 +68,7 @@ func main() {
 	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
 	payloadBytes := getPayload(query)
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
+	req := getPostRequest(url, payloadBytes)
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
@@ -92,11 +88,7 @@ func main() {
 	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
 	payloadBytes = getPayload(query)
 
-	req, err = http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
+	req = getPostRequest(url, payloadBytes)
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
@@ -456,6 +448,15 @@ func getPayload(query string) []byte {
 	}
 
 	return payloadBytes
+}
+
+func getPostRequest(url string, payloadBytes []byte) *http.Request {
+	req, err := http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+	return req
 }
 
 func getResponse(resp *http.Response) map[string]interface{} {
