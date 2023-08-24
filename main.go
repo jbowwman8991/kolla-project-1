@@ -95,9 +95,11 @@ func main() {
 	responseJSON = getResponse(resp)
 	turnPretty(responseJSON)
 
+	var items []string
 	for i := 0; i < 3; i++ {
-		createEmployee(boardID, groupID, url, mondayKey)
+		items = createEmployee(boardID, groupID, url, mondayKey, items)
 	}
+	addItems(items)
 
 	query = "mutation { delete_item { id }}"
 
@@ -525,7 +527,7 @@ func turnPretty(responseJSON map[string]interface{}) {
 	fmt.Println(string(prettyJSON))
 }
 
-func createEmployee(boardID string, groupID string, url string, mondayKey string) {
+func createEmployee(boardID string, groupID string, url string, mondayKey string, items []string) []string {
 	name := "test"
 	id := "1"
 	start := "2023-09-09"
@@ -564,12 +566,13 @@ func createEmployee(boardID string, groupID string, url string, mondayKey string
 
 	responseJSON := getResponse(resp)
 	itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
-	addItem(itemID)
+	items = append(items, itemID)
 
 	turnPretty(responseJSON)
+	return items
 }
 
-func addItem(itemID string) {
+func addItems(items []string) {
 	filePath := "item-ids.txt"
 
 	file, err := os.Create(filePath)
@@ -579,10 +582,12 @@ func addItem(itemID string) {
 	}
 	defer file.Close()
 
-	_, err = file.WriteString(itemID)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return
+	for _, itemID := range items {
+		_, err = file.WriteString(itemID + "\n")
+		if err != nil {
+			fmt.Println("Error writing to file:", err)
+			return
+		}
 	}
 }
 
