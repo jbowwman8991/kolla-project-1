@@ -199,50 +199,52 @@ func main() {
 
 	fmt.Println(string(prettyJSON))
 
-	// Deleting group.
-	query = `mutation { delete_group (board_id: ` + boardID + `, group_id: "` + groupID + `") { id deleted } }`
+	/*
+		// Deleting group.
+		query = `mutation { delete_group (board_id: ` + boardID + `, group_id: "` + groupID + `") { id deleted } }`
 
-	data := map[string]interface{}{
-		"query": query,
-	}
+		data := map[string]interface{}{
+			"query": query,
+		}
 
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
-		return
-	}
+		jsonData, err := json.Marshal(data)
+		if err != nil {
+			fmt.Println("Error marshaling JSON:", err)
+			return
+		}
 
-	client = &http.Client{}
-	req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
+		client = &http.Client{}
+		req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+		if err != nil {
+			fmt.Println("Error creating request:", err)
+			return
+		}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", mondayKey)
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Authorization", mondayKey)
 
-	response, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
-	}
-	defer response.Body.Close()
+		response, err := client.Do(req)
+		if err != nil {
+			fmt.Println("Error sending request:", err)
+			return
+		}
+		defer response.Body.Close()
 
-	var responseData map[string]interface{}
-	err = json.NewDecoder(response.Body).Decode(&responseData)
-	if err != nil {
-		fmt.Println("Error decoding JSON:", err)
-		return
-	}
+		var responseData map[string]interface{}
+		err = json.NewDecoder(response.Body).Decode(&responseData)
+		if err != nil {
+			fmt.Println("Error decoding JSON:", err)
+			return
+		}
 
-	prettyJSON, err = json.MarshalIndent(responseData, "", "  ")
-	if err != nil {
-		fmt.Println("Error formatting JSON:", err)
-		return
-	}
+		prettyJSON, err = json.MarshalIndent(responseData, "", "  ")
+		if err != nil {
+			fmt.Println("Error formatting JSON:", err)
+			return
+		}
 
-	fmt.Println(string(prettyJSON))
+		fmt.Println(string(prettyJSON))
+	*/
 
 	// Connecting to bambooHR and getting time off requests.
 	ctx = context.Background()
@@ -268,35 +270,37 @@ func main() {
 
 	req.Header.Add("Accept", "application/json")
 
-	response, err = client.Do(req)
+	response, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error sending request:", err)
 		return
 	}
 	defer response.Body.Close()
 
-	responseData2, err := ioutil.ReadAll(response.Body)
+	responseData, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		fmt.Println("Error reading response:", err)
 		return
 	}
 
-	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseData2)}
+	fmt.Println(&http.Client{})
 
-	prettyJSON, err = json.MarshalIndent(wrappedJSON, "", "    ")
+	//wrappedJSON := WrappedJSON{Data: json.RawMessage(responseData)}
+
+	prettyJSON, err = json.MarshalIndent(responseData, "", "    ")
 	if err != nil {
 		fmt.Println("Error formatting JSON:", err)
 		return
 	}
 
-	/*
-		// Write prettified JSON to a file
-		err = ioutil.WriteFile("output.json", prettyJSON, 0644)
-		if err != nil {
-			fmt.Println("Error writing to file:", err)
-			return
-		}
-	*/
+	fmt.Println(string(prettyJSON))
+
+	// Write prettified JSON to a file
+	err = ioutil.WriteFile("output.json", prettyJSON, 0644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return
+	}
 
 	// Turning json into better object.
 	var resObj People
