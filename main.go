@@ -50,8 +50,10 @@ type Amounts struct {
 }
 
 func main() {
+	getItems()
+
 	apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain := getVars()
-	fmt.Println(groupID, bambooConnector, companyDomain)
+	fmt.Println(bambooConnector, companyDomain)
 
 	kolla, err := kc.New(apiKey)
 	if err != nil {
@@ -93,7 +95,9 @@ func main() {
 	responseJSON = getResponse(resp)
 	turnPretty(responseJSON)
 
-	createEmployee(boardID, groupID, url, mondayKey)
+	for i := 0; i < 3; i++ {
+		createEmployee(boardID, groupID, url, mondayKey)
+	}
 
 	query = "mutation { delete_item { id }}"
 
@@ -560,10 +564,12 @@ func createEmployee(boardID string, groupID string, url string, mondayKey string
 
 	responseJSON := getResponse(resp)
 	itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
-	fmt.Println(itemID)
+	addItem(itemID)
 
-	data := itemID
+	turnPretty(responseJSON)
+}
 
+func addItem(itemID string) {
 	filePath := "item-ids.txt"
 
 	file, err := os.Create(filePath)
@@ -573,13 +579,39 @@ func createEmployee(boardID string, groupID string, url string, mondayKey string
 	}
 	defer file.Close()
 
-	_, err = file.WriteString(data)
+	_, err = file.WriteString(itemID)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
 		return
 	}
+}
 
-	fmt.Println("Data written to file successfully.")
+func getItems() {
+	// Replace with your file path
+	filePath := "item-ids.txt"
 
-	turnPretty(responseJSON)
+	// Open the file for reading
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return
+	}
+	defer file.Close()
+
+	var lines []string
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading file:", err)
+		return
+	}
+
+	fmt.Println("Lines read from file:")
+	for _, line := range lines {
+		fmt.Println(line)
+	}
 }
