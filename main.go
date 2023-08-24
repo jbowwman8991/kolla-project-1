@@ -73,12 +73,7 @@ func main() {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
-	}
+	resp := doRequest(req)
 	defer resp.Body.Close()
 
 	responseJSON := getResponse(resp)
@@ -93,13 +88,7 @@ func main() {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
 
-	//client = &http.Client{}
-	resp, err = client.Do(req)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	defer resp.Body.Close()
+	resp = doRequest(req)
 
 	responseJSON = getResponse(resp)
 	turnPretty(responseJSON)
@@ -440,13 +429,11 @@ func getPayload(query string) []byte {
 	payload := map[string]interface{}{
 		"query": query,
 	}
-
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		fmt.Println("Error marshaling JSON:", err)
 		return nil
 	}
-
 	return payloadBytes
 }
 
@@ -457,6 +444,16 @@ func getPostRequest(url string, payloadBytes []byte) *http.Request {
 		return nil
 	}
 	return req
+}
+
+func doRequest(req *http.Request) *http.Response {
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error sending request:", err)
+		return nil
+	}
+	return resp
 }
 
 func getResponse(resp *http.Response) map[string]interface{} {
