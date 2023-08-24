@@ -121,47 +121,17 @@ func main() {
 					}
 				}`
 
-	data := map[string]interface{}{
-		"query": query,
-	}
+	payloadBytes = getPayload(query)
 
-	jsonData2, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
-		return
-	}
-
-	client := &http.Client{}
-	req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData2))
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
+	req = getPostRequest(url, payloadBytes)
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Authorization", mondayKey)
 
-	response, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
-	}
-	defer response.Body.Close()
+	resp = doRequest(req)
 
-	var responseData map[string]interface{}
-	err = json.NewDecoder(response.Body).Decode(&responseData)
-	if err != nil {
-		fmt.Println("Error decoding JSON:", err)
-		return
-	}
-
-	prettyJSON, err := json.MarshalIndent(responseData, "", "  ")
-	if err != nil {
-		fmt.Println("Error formatting JSON:", err)
-		return
-	}
-
-	fmt.Println(string(prettyJSON))
+	responseJSON = getResponse(resp)
+	turnPretty(responseJSON)
 
 	/*
 		// Deleting group.
