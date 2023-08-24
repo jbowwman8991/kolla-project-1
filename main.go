@@ -512,7 +512,6 @@ func createEmployee(boardID string, groupID string, url string, mondayKey string
 						id
 					}
 				}`
-
 	payloadBytes := getPayload(query)
 
 	req := getPostRequest(url, payloadBytes)
@@ -550,10 +549,8 @@ func addItems(items []string) {
 }
 
 func getItems() []string {
-	// Replace with your file path
 	filePath := "item-ids.txt"
 
-	// Open the file for reading
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -583,49 +580,18 @@ func getItems() []string {
 
 func deleteItems(oldItems []string, url string, mondayKey string) {
 	for _, item := range oldItems {
-
 		query := "mutation { delete_item (item_id: " + item + ") { id }}"
+		payloadBytes := getPayload(query)
 
-		payload := map[string]interface{}{
-			"query": query,
-		}
-
-		payloadBytes, err := json.Marshal(payload)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
+		req := getPostRequest(url, payloadBytes)
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", mondayKey)
 
-		client := http.Client{}
-		resp, err := client.Do(req)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
+		resp := doRequest(req)
 		defer resp.Body.Close()
 
-		var result map[string]interface{}
-		err = json.NewDecoder(resp.Body).Decode(&result)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		prettyResult, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-
-		fmt.Println(string(prettyResult))
+		responseJSON := getResponse(resp)
+		turnPretty(responseJSON)
 	}
 }
