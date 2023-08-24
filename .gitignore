@@ -2,4 +2,5 @@ go.mod
 go.sum
 output.json
 time-off.json
+env-vars.txt
 
