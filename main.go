@@ -66,16 +66,7 @@ func main() {
 
 	// Getting monday.com account details.
 	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
-
-	payload := map[string]interface{}{
-		"query": query,
-	}
-
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
-		return
-	}
+	payloadBytes := getPayload(query)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
 	if err != nil {
@@ -99,16 +90,7 @@ func main() {
 
 	// Getting monday.com boards.
 	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
-
-	payload = map[string]interface{}{
-		"query": query,
-	}
-
-	payloadBytes, err = json.Marshal(payload)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
+	payloadBytes = getPayload(query)
 
 	req, err = http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
 	if err != nil {
@@ -460,6 +442,20 @@ func getCreds(kolla *kc.Client, connector string, customerID string) *kc.Credent
 		return nil
 	}
 	return creds
+}
+
+func getPayload(query string) []byte {
+	payload := map[string]interface{}{
+		"query": query,
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return nil
+	}
+
+	return payloadBytes
 }
 
 func getResponse(resp *http.Response) map[string]interface{} {
