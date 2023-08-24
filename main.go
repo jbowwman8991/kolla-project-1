@@ -142,14 +142,7 @@ func main() {
 	defer resp.Body.Close()
 
 	responseJSON := getResponse(resp)
-
-	prettyJSON, err := json.MarshalIndent(responseJSON, "", "  ")
-	if err != nil {
-		fmt.Println("Error formatting JSON:", err)
-		return
-	}
-
-	fmt.Println(string(prettyJSON))
+	turnPretty(responseJSON)
 
 	// Getting monday.com boards.
 	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
@@ -182,14 +175,7 @@ func main() {
 	defer resp.Body.Close()
 
 	responseJSON = getResponse(resp)
-
-	prettyJSON, err = json.MarshalIndent(responseJSON, "", "  ")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	fmt.Println(string(prettyJSON))
+	turnPretty(responseJSON)
 
 	/*
 		// Deleting group.
@@ -478,4 +464,13 @@ func getResponse(resp *http.Response) map[string]interface{} {
 		return nil
 	}
 	return responseJSON
+}
+
+func turnPretty(responseJSON map[string]interface{}) {
+	prettyJSON, err := json.MarshalIndent(responseJSON, "", "  ")
+	if err != nil {
+		fmt.Println("Error formatting JSON:", err)
+		return
+	}
+	fmt.Println(string(prettyJSON))
 }
