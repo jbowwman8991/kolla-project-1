@@ -93,45 +93,7 @@ func main() {
 	responseJSON = getResponse(resp)
 	turnPretty(responseJSON)
 
-	name := "test"
-	id := "1"
-	start := "2023-09-09"
-	end := "2023-09-09"
-	status := "approved"
-	created := "2023-09-09"
-	fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
-
-	column_values := `"{\"text\":\"` + id + `\",
-								\"status\":\"` + status + `\",
-								\"date4\":\"` + start + `\",
-								\"date\":\"` + end + `\",
-								\"created1\":\"` + created + `\"}"`
-
-	// Updating an item.
-	query = `mutation {
-				create_item
-					(
-						board_id: ` + boardID + `,
-						group_id: "` + groupID + `",
-						item_name: "` + name + `",
-						column_values: ` + column_values + `
-					)
-					{
-						id
-					}
-				}`
-
-	payloadBytes = getPayload(query)
-
-	req = getPostRequest(url, payloadBytes)
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", mondayKey)
-
-	resp = doRequest(req)
-
-	responseJSON = getResponse(resp)
-	turnPretty(responseJSON)
+	createEmployee(boardID, groupID, url, mondayKey)
 
 	/*
 		// Deleting group.
@@ -513,4 +475,45 @@ func turnPretty(responseJSON map[string]interface{}) {
 		return
 	}
 	fmt.Println(string(prettyJSON))
+}
+
+func createEmployee(boardID string, groupID string, url string, mondayKey string) {
+	name := "test"
+	id := "1"
+	start := "2023-09-09"
+	end := "2023-09-09"
+	status := "approved"
+	created := "2023-09-09"
+	fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
+
+	column_values := `"{\"text\":\"` + id + `\",
+								\"status\":\"` + status + `\",
+								\"date4\":\"` + start + `\",
+								\"date\":\"` + end + `\",
+								\"created1\":\"` + created + `\"}"`
+
+	query := `mutation {
+				create_item
+					(
+						board_id: ` + boardID + `,
+						group_id: "` + groupID + `",
+						item_name: "` + name + `",
+						column_values: ` + column_values + `
+					)
+					{
+						id
+					}
+				}`
+
+	payloadBytes := getPayload(query)
+
+	req := getPostRequest(url, payloadBytes)
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", mondayKey)
+
+	resp := doRequest(req)
+
+	responseJSON := getResponse(resp)
+	turnPretty(responseJSON)
 }
