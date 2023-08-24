@@ -50,7 +50,7 @@ type Amounts struct {
 }
 
 func main() {
-	getItems()
+	oldItems := getItems()
 
 	apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain := getVars()
 	fmt.Println(bambooConnector, companyDomain)
@@ -65,6 +65,8 @@ func main() {
 	mondayKey := creds.Token
 
 	url := "https://api.monday.com/v2"
+
+	deleteItems(oldItems, url, mondayKey)
 
 	// Getting monday.com account details.
 	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
@@ -100,50 +102,6 @@ func main() {
 		items = createEmployee(boardID, groupID, url, mondayKey, items)
 	}
 	addItems(items)
-
-	query = "mutation { delete_item { id }}"
-
-	payload := map[string]interface{}{
-		"query": query,
-	}
-
-	payloadBytes, err = json.Marshal(payload)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	req, err = http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", mondayKey)
-
-	client := http.Client{}
-	resp, err = client.Do(req)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	var result map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	prettyResult, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	fmt.Println(string(prettyResult))
 
 	/*
 		// Deleting group.
@@ -591,7 +549,7 @@ func addItems(items []string) {
 	}
 }
 
-func getItems() {
+func getItems() []string {
 	// Replace with your file path
 	filePath := "item-ids.txt"
 
@@ -599,7 +557,7 @@ func getItems() {
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
-		return
+		return nil
 	}
 	defer file.Close()
 
@@ -612,11 +570,62 @@ func getItems() {
 
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error reading file:", err)
-		return
+		return nil
 	}
 
 	fmt.Println("Lines read from file:")
 	for _, line := range lines {
 		fmt.Println(line)
+	}
+
+	return lines
+}
+
+func deleteItems(oldItems []string, url string, mondayKey string) {
+	for _, item := range oldItems {
+
+		query := "mutation { delete_item (item_id: " + item + ") { id }}"
+
+		payload := map[string]interface{}{
+			"query": query,
+		}
+
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", mondayKey)
+
+		client := http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		var result map[string]interface{}
+		err = json.NewDecoder(resp.Body).Decode(&result)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		prettyResult, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Println(string(prettyResult))
 	}
 }
