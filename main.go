@@ -95,6 +95,50 @@ func main() {
 
 	createEmployee(boardID, groupID, url, mondayKey)
 
+	query = "mutation { delete_item { id }}"
+
+	payload := map[string]interface{}{
+		"query": query,
+	}
+
+	payloadBytes, err = json.Marshal(payload)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	req, err = http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", mondayKey)
+
+	client := http.Client{}
+	resp, err = client.Do(req)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	prettyResult, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println(string(prettyResult))
+
 	/*
 		// Deleting group.
 		query = `mutation { delete_group (board_id: ` + boardID + `, group_id: "` + groupID + `") { id deleted } }`
@@ -515,5 +559,8 @@ func createEmployee(boardID string, groupID string, url string, mondayKey string
 	resp := doRequest(req)
 
 	responseJSON := getResponse(resp)
+	fmt.Println(responseJSON)
+	fmt.Println(responseJSON["account_id"])
+
 	turnPretty(responseJSON)
 }
