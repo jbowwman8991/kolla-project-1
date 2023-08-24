@@ -80,10 +80,8 @@ func main() {
 				customerID = value
 			} else if key == "BOARDID" {
 				boardID = value
-				fmt.Println(key, boardID)
 			} else if key == "GROUPID" {
 				groupID = value
-				fmt.Println(key, groupID)
 			} else if key == "BAMBOOCONNECTOR" {
 				bambooConnector = value
 			} else if key == "COMPANYDOMAIN" {
@@ -157,7 +155,7 @@ func main() {
 	fmt.Println(string(prettyJSON))
 
 	// Getting monday.com boards.
-	query = "query { boards (ids: 5032457884) { name state id groups { title id } columns { type } }}"
+	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
 
 	payload = map[string]interface{}{
 		"query": query,
@@ -202,7 +200,7 @@ func main() {
 	fmt.Println(string(prettyJSON))
 
 	// Deleting group.
-	query = `mutation { delete_group (board_id: 5032457884, group_id: "topics") { id deleted } }`
+	query = `mutation { delete_group (board_id: ` + boardID + `, group_id: "` + groupID + `") { id deleted } }`
 
 	data := map[string]interface{}{
 		"query": query,
@@ -323,8 +321,8 @@ func main() {
 		query = `mutation { 
 			create_item 
 				(
-					board_id: 5032457884, 
-					group_id: "topics", 
+					board_id: ` + boardID + `, 
+					group_id: "` + groupID + `", 
 					item_name: "` + name + `", 
 					column_values: ` + column_values + `
 				) 
