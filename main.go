@@ -46,8 +46,10 @@ type Amounts struct {
 }
 
 func main() {
+	// Getting all old items.
 	oldItems := getItems()
 
+	// Getting ENV variables from text file.
 	apiKey, mondayConnector, customerID, boardID, groupID := getVars()
 
 	kolla, err := kc.New(apiKey)
@@ -92,6 +94,7 @@ func main() {
 	responseJSON = getResponse(resp)
 	turnPretty(responseJSON)
 
+	// Populating monday.com board.
 	var items []string
 	for i := 0; i < 3; i++ {
 		items = createEmployee(boardID, groupID, url, mondayKey, items)
