@@ -51,6 +51,7 @@ func main() {
 
 	// Getting ENV variables from text file.
 	apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain := getVars()
+	fmt.Println(bambooConnector, companyDomain)
 
 	kolla, err := kc.New(apiKey)
 	if err != nil {
@@ -391,16 +392,16 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 							\"created1\":\"` + created + `\"}"`
 
 		// Updating an item.
-		query = `mutation { 
-			create_item 
+		query = `mutation {
+			create_item
 				(
-					board_id: ` + boardID + `, 
-					group_id: "` + groupID + `", 
-					item_name: "` + name + `", 
+					board_id: ` + boardID + `,
+					group_id: "` + groupID + `",
+					item_name: "` + name + `",
 					column_values: ` + column_values + `
-				) 
-				{ 
-					id 
+				)
+				{
+					id
 				}
 			}`
 
@@ -439,7 +440,7 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 			fmt.Println("Error decoding JSON:", err)
 			return
 		}
-		/*
+
 			prettyJSON, err = json.MarshalIndent(responseData, "", "  ")
 			if err != nil {
 				fmt.Println("Error formatting JSON:", err)
@@ -447,6 +448,6 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 			}
 
 			fmt.Println(string(prettyJSON))
-		*/
+
 	}
 */
