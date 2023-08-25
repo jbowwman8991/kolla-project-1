@@ -24,14 +24,15 @@ type People struct {
 }
 
 type Employee struct {
-	EmployeeID string    `json:"employeeId"`
-	Status     Status    `json:"status"`
-	Name       string    `json:"name"`
-	Start      string    `json:"start"`
-	End        string    `json:"end"`
-	Created    string    `json:"created"`
-	Type       []Types   `json:"type"`
-	Amount     []Amounts `json:"amount"`
+	EmployeeID string `json:"employeeId"`
+	Status     Status `json:"status"`
+	Name       string `json:"name"`
+	Start      string `json:"start"`
+	End        string `json:"end"`
+	Created    string `json:"created"`
+	Type       Type   `json:"type"`
+	Amount     Amount `json:"amount"`
+	Notes      Notes  `json:"notes"`
 }
 
 type Status struct {
@@ -40,15 +41,20 @@ type Status struct {
 	Status              string `json:"status"`
 }
 
-type Types struct {
+type Type struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Icon string `json:"icon"`
 }
 
-type Amounts struct {
+type Amount struct {
 	Unit   string `json:"unit"`
 	Amount string `json:"amount"`
+}
+
+type Notes struct {
+	Manager  string `json:"manager"`
+	Employee string `json:"employee"`
 }
 
 func main() {
@@ -327,12 +333,7 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 
 func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string) {
 	// Connecting to bambooHR and getting time off requests.
-	ctx := context.Background()
-	creds, err := kolla.Credentials(ctx, bambooConnector, customerID)
-	if err != nil {
-		fmt.Println("Error getting credentials.")
-		return
-	}
+	creds := getCreds(kolla, bambooConnector, customerID)
 
 	bambooKey := creds.Token
 	today := time.Now()
@@ -341,7 +342,6 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 	end := oneMonthFromToday.Format("2006-01-02")
 
 	url := "https://" + bambooKey + ":x@api.bamboohr.com/api/gateway.php/" + companyDomain + "/v1/time_off/requests/?start=" + start + "&end=" + end
-	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
@@ -350,35 +350,27 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 
 	req.Header.Add("Accept", "application/json")
 
-	response, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
-	}
-	defer response.Body.Close()
+	resp := doRequest(req)
+	defer resp.Body.Close()
 
-	responseData, err := ioutil.ReadAll(response.Body)
+	responseJSON, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading response:", err)
 		return
 	}
-
-	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseData)}
+	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseJSON)}
 
 	prettyJSON, err := json.MarshalIndent(wrappedJSON, "", "    ")
 	if err != nil {
 		fmt.Println("Error formatting JSON:", err)
 		return
 	}
-
-	// Write prettified JSON to a file
 	err = ioutil.WriteFile("output.json", prettyJSON, 0644)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
 		return
 	}
 
-	// Turning json into better object.
 	var resObj People
 	json.Unmarshal(prettyJSON, &resObj)
 	fmt.Println(resObj.Employees)
