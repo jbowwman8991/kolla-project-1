@@ -15,6 +15,10 @@ import (
 	"github.com/kollalabs/sdk-go/kc"
 )
 
+type WrappedJSON struct {
+	Data interface{} `json:"data"`
+}
+
 type People struct {
 	Employees []Employee `json:"data"`
 }
@@ -321,144 +325,6 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 	}
 }
 
-/*
-
-// Connecting to bambooHR and getting time off requests.
-	ctx = context.Background()
-	creds, err = kolla.Credentials(ctx, bambooConnector, customerID)
-	if err != nil {
-		fmt.Println("Error getting credentials.")
-		return
-	}
-
-	bambooKey := creds.Token
-	today := time.Now()
-	oneMonthFromToday := today.AddDate(0, 1, 0)
-	start := today.Format("2006-01-02")
-	end := oneMonthFromToday.Format("2006-01-02")
-
-	url = "https://" + bambooKey + ":x@api.bamboohr.com/api/gateway.php/" + companyDomain + "/v1/time_off/requests/?start=" + start + "&end=" + end
-	client = &http.Client{}
-	req, err = http.NewRequest("GET", url, nil)
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
-
-	req.Header.Add("Accept", "application/json")
-
-	response, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
-	}
-	defer response.Body.Close()
-
-	responseData, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		fmt.Println("Error reading response:", err)
-		return
-	}
-
-	fmt.Println(&http.Client{})
-
-	//wrappedJSON := WrappedJSON{Data: json.RawMessage(responseData)}
-
-	prettyJSON, err = json.MarshalIndent(responseData, "", "    ")
-	if err != nil {
-		fmt.Println("Error formatting JSON:", err)
-		return
-	}
-
-	fmt.Println(string(prettyJSON))
-
-	// Write prettified JSON to a file
-	err = ioutil.WriteFile("output.json", prettyJSON, 0644)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return
-	}
-
-	// Turning json into better object.
-	var resObj People
-	json.Unmarshal(prettyJSON, &resObj)
-
-	for _, employee := range resObj.Employees {
-		name := employee.Name
-		id := employee.EmployeeID
-		start := employee.Start
-		end := employee.End
-		status := employee.Status.Status
-		created := employee.Created
-		fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
-
-		column_values := `"{\"text\":\"` + id + `\",
-							\"status\":\"` + status + `\",
-							\"date4\":\"` + start + `\",
-							\"date\":\"` + end + `\",
-							\"created1\":\"` + created + `\"}"`
-
-		// Updating an item.
-		query = `mutation {
-			create_item
-				(
-					board_id: ` + boardID + `,
-					group_id: "` + groupID + `",
-					item_name: "` + name + `",
-					column_values: ` + column_values + `
-				)
-				{
-					id
-				}
-			}`
-
-		url = "https://api.monday.com/v2"
-
-		data := map[string]interface{}{
-			"query": query,
-		}
-
-		jsonData2, err := json.Marshal(data)
-		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return
-		}
-
-		client = &http.Client{}
-		req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData2))
-		if err != nil {
-			fmt.Println("Error creating request:", err)
-			return
-		}
-
-		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("Authorization", mondayKey)
-
-		response, err = client.Do(req)
-		if err != nil {
-			fmt.Println("Error sending request:", err)
-			return
-		}
-		defer response.Body.Close()
-
-		var responseData map[string]interface{}
-		err = json.NewDecoder(response.Body).Decode(&responseData)
-		if err != nil {
-			fmt.Println("Error decoding JSON:", err)
-			return
-		}
-
-			prettyJSON, err = json.MarshalIndent(responseData, "", "  ")
-			if err != nil {
-				fmt.Println("Error formatting JSON:", err)
-				return
-			}
-
-			fmt.Println(string(prettyJSON))
-
-	}
-*/
-
 func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string) {
 	// Connecting to bambooHR and getting time off requests.
 	ctx := context.Background()
@@ -482,8 +348,6 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 		return
 	}
 
-	fmt.Println(bambooKey)
-
 	req.Header.Add("Accept", "application/json")
 
 	response, err := client.Do(req)
@@ -499,8 +363,6 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 		return
 	}
 
-	fmt.Println(&http.Client{})
-
 	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseData)}
 
 	prettyJSON, err := json.MarshalIndent(wrappedJSON, "", "    ")
@@ -508,8 +370,6 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 		fmt.Println("Error formatting JSON:", err)
 		return
 	}
-
-	fmt.Println(string(prettyJSON))
 
 	// Write prettified JSON to a file
 	err = ioutil.WriteFile("output.json", prettyJSON, 0644)
