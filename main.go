@@ -429,11 +429,6 @@ func getItems() []string {
 		return nil
 	}
 
-	fmt.Println("Lines read from file:")
-	for _, line := range lines {
-		fmt.Println(line)
-	}
-
 	return lines
 }
 
