@@ -50,7 +50,7 @@ func main() {
 	oldItems := getItems()
 
 	// Getting ENV variables from text file.
-	apiKey, mondayConnector, customerID, boardID, groupID := getVars()
+	apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain := getVars()
 
 	kolla, err := kc.New(apiKey)
 	if err != nil {
@@ -102,13 +102,13 @@ func main() {
 	addItems(items)
 }
 
-func getVars() (string, string, string, string, string) {
-	var apiKey, mondayConnector, customerID, boardID, groupID string
+func getVars() (string, string, string, string, string, string, string) {
+	var apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain string
 
 	file, err := os.Open("env-vars.txt")
 	if err != nil {
 		fmt.Println("Error opening the file:", err)
-		return "", "", "", "", ""
+		return "", "", "", "", "", "", ""
 	}
 	defer file.Close()
 
@@ -129,16 +129,22 @@ func getVars() (string, string, string, string, string) {
 				boardID = value
 			} else if key == "GROUPID" {
 				groupID = value
+			} else if key == "BAMBOOCONNECTOR" {
+				bambooConnector = value
+				fmt.Println(key, bambooConnector)
+			} else if key == "COMPANYDOMAIN" {
+				companyDomain = value
+				fmt.Println(key, companyDomain)
 			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error reading the file:", err)
-		return "", "", "", "", ""
+		return "", "", "", "", "", "", ""
 	}
 
-	return apiKey, mondayConnector, customerID, boardID, groupID
+	return apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain
 }
 
 func getCreds(kolla *kc.Client, connector string, customerID string) *kc.Credentials {
