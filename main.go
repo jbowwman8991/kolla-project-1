@@ -24,14 +24,14 @@ type People struct {
 }
 
 type Employee struct {
-	EmployeeID string    `json:"employeeId"`
-	Status     Status    `json:"status"`
-	Name       string    `json:"name"`
-	Start      string    `json:"start"`
-	End        string    `json:"end"`
-	Created    string    `json:"created"`
-	Type       []Types   `json:"type"`
-	Amount     []Amounts `json:"amount"`
+	EmployeeID string `json:"employeeId"`
+	Status     Status `json:"status"`
+	Name       string `json:"name"`
+	Start      string `json:"start"`
+	End        string `json:"end"`
+	Created    string `json:"created"`
+	Amount     Amount `json:"amount"`
+	Notes      Notes  `json:"notes"`
 }
 
 type Status struct {
@@ -40,58 +40,27 @@ type Status struct {
 	Status              string `json:"status"`
 }
 
-type Types struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Icon string `json:"icon"`
-}
-
-type Amounts struct {
+type Amount struct {
 	Unit   string `json:"unit"`
 	Amount string `json:"amount"`
 }
 
+type Notes struct {
+	Manager  string `json:"manager"`
+	Employee string `json:"employee"`
+}
+
 func main() {
-
-	var apiKey, mondayConnector, customerID, boardID, groupID, bambooConnector, companyDomain string
-
-	// Open the file
-	file, err := os.Open("env-vars.txt")
-	if err != nil {
-		fmt.Println("Error opening the file:", err)
+	oldItems := getItems()
+	if oldItems == nil {
+		fmt.Println("Error getting old items.")
 		return
 	}
-	defer file.Close()
 
-	// Read the file content
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		// Parse the variable (assuming it's a simple key=value format)
-		parts := strings.Split(line, "=")
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			if key == "APIKEY" {
-				apiKey = value
-			} else if key == "MONDAYCONNECTOR" {
-				mondayConnector = value
-			} else if key == "CUSTOMERID" {
-				customerID = value
-			} else if key == "BOARDID" {
-				boardID = value
-			} else if key == "GROUPID" {
-				groupID = value
-			} else if key == "BAMBOOCONNECTOR" {
-				bambooConnector = value
-			} else if key == "COMPANYDOMAIN" {
-				companyDomain = value
-			}
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading the file:", err)
+	apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain := getVars()
+	if apiKey == "" {
+		fmt.Println("Error getting env vars.")
+		return
 	}
 
 	kolla, err := kc.New(apiKey)
@@ -100,159 +69,346 @@ func main() {
 		panic(err)
 	}
 
-	ctx := context.Background()
-	creds, err := kolla.Credentials(ctx, mondayConnector, customerID)
-	if err != nil {
+	creds := getCreds(kolla, mondayConnector, kollaCustomerID)
+	if creds == nil {
 		fmt.Println("Error getting credentials.")
 		return
 	}
-
 	mondayKey := creds.Token
 
-	// Getting monday.com account details.
 	url := "https://api.monday.com/v2"
-	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
 
-	payload := map[string]interface{}{
-		"query": query,
-	}
-
-	payloadBytes, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
+	success := deleteItems(oldItems, url, mondayKey)
+	if !success {
+		fmt.Println("Error deleting old items.")
 		return
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
-	if err != nil {
-		fmt.Println("Error creating request:", err)
+	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
+	payloadBytes := getPayload(query)
+	if payloadBytes == nil {
+		fmt.Println("Error getting payload.")
+		return
+	}
+
+	req := getPostRequest(url, payloadBytes)
+	if req == nil {
+		fmt.Println("Error getting post request.")
 		return
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
 
+	resp := doRequest(req)
+	if resp == nil {
+		fmt.Println("Error getting response.")
+		return
+	}
+	defer resp.Body.Close()
+
+	responseJSON := getResponse(resp)
+	if responseJSON == nil {
+		fmt.Println("Error getting response JSON.")
+		return
+	}
+	success = turnPretty(responseJSON)
+	if !success {
+		fmt.Println("Error in turning JSON pretty.")
+		return
+	}
+
+	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
+	payloadBytes = getPayload(query)
+	if payloadBytes == nil {
+		fmt.Println("Error getting payload.")
+		return
+	}
+
+	req = getPostRequest(url, payloadBytes)
+	if req == nil {
+		fmt.Println("Error getting post request.")
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", mondayKey)
+
+	resp = doRequest(req)
+	if resp == nil {
+		fmt.Println("Error getting response.")
+		return
+	}
+	defer resp.Body.Close()
+
+	responseJSON = getResponse(resp)
+	if responseJSON == nil {
+		fmt.Println("Error getting response JSON.")
+		return
+	}
+	success = turnPretty(responseJSON)
+	if !success {
+		fmt.Println("Error in turning JSON pretty.")
+		return
+	}
+
+	var items []string
+	/*for i := 0; i < 3; i++ {
+		name := "test"
+		id := "1"
+		start := "2023-09-09"
+		end := "2023-09-09"
+		status := "approved"
+		created := "2023-09-09"
+		items = createTestEmployee(name, id, start, end, status, created, boardID, groupID, url, mondayKey, items)
+	}*/
+
+	items = bamboo(kolla, bambooConnector, bambooCustomerID, companyDomain, boardID, groupID, mondayKey, url, items)
+	if items == nil {
+		fmt.Println("Error getting items.")
+		return
+	}
+
+	success = addItems(items)
+	if !success {
+		fmt.Println("Error adding items.")
+		return
+	}
+}
+
+func getVars() (string, string, string, string, string, string, string, string) {
+	var apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain string
+
+	file, err := os.Open("env-vars.txt")
+	if err != nil {
+		fmt.Println("Error opening the file:", err)
+		return "", "", "", "", "", "", "", ""
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.Split(line, "=")
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key == "APIKEY" {
+				apiKey = value
+			} else if key == "MONDAYCONNECTOR" {
+				mondayConnector = value
+			} else if key == "KOLLACUSTOMERID" {
+				kollaCustomerID = value
+			} else if key == "BOARDID" {
+				boardID = value
+			} else if key == "GROUPID" {
+				groupID = value
+			} else if key == "BAMBOOCONNECTOR" {
+				bambooConnector = value
+				fmt.Println(key, bambooConnector)
+			} else if key == "BAMBOOCUSTOMERID" {
+				bambooCustomerID = value
+				fmt.Println(key, bambooCustomerID)
+			} else if key == "COMPANYDOMAIN" {
+				companyDomain = value
+				fmt.Println(key, companyDomain)
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading the file:", err)
+		return "", "", "", "", "", "", "", ""
+	}
+
+	return apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain
+}
+
+func getCreds(kolla *kc.Client, connector string, customerID string) *kc.Credentials {
+	ctx := context.Background()
+	creds, err := kolla.Credentials(ctx, connector, customerID)
+	if err != nil {
+		fmt.Println("Error getting credentials.")
+		return nil
+	}
+	return creds
+}
+
+func getPayload(query string) []byte {
+	payload := map[string]interface{}{
+		"query": query,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+		return nil
+	}
+	return payloadBytes
+}
+
+func getPostRequest(url string, payloadBytes []byte) *http.Request {
+	req, err := http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
+	}
+	return req
+}
+
+func doRequest(req *http.Request) *http.Response {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error sending request:", err)
-		return
+		return nil
 	}
-	defer resp.Body.Close()
+	return resp
+}
 
-	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		fmt.Println("Error decoding response:", err)
-		return
+func getResponse(resp *http.Response) map[string]interface{} {
+	var responseJSON map[string]interface{}
+	err := json.NewDecoder(resp.Body).Decode(&responseJSON)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return nil
 	}
+	return responseJSON
+}
 
-	prettyJSON, err := json.MarshalIndent(result, "", "  ")
+func turnPretty(responseJSON map[string]interface{}) bool {
+	prettyJSON, err := json.MarshalIndent(responseJSON, "", "  ")
 	if err != nil {
 		fmt.Println("Error formatting JSON:", err)
-		return
+		return false
 	}
-
 	fmt.Println(string(prettyJSON))
+	return true
+}
 
-	// Getting monday.com boards.
-	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
+/*
+func createTestEmployee(name string, id string, start string, end string, status string, created string, boardID string, groupID string, url string, mondayKey string, items []string) []string {
+	fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
 
-	payload = map[string]interface{}{
-		"query": query,
-	}
+	column_values := `"{\"text\":\"` + id + `\",
+								\"status\":\"` + status + `\",
+								\"date4\":\"` + start + `\",
+								\"date\":\"` + end + `\",
+								\"created1\":\"` + created + `\"}"`
 
-	payloadBytes, err = json.Marshal(payload)
+	query := `mutation {
+				create_item
+					(
+						board_id: ` + boardID + `,
+						group_id: "` + groupID + `",
+						item_name: "` + name + `",
+						column_values: ` + column_values + `
+					)
+					{
+						id
+					}
+				}`
+	payloadBytes := getPayload(query)
+
+	req := getPostRequest(url, payloadBytes)
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", mondayKey)
+
+	resp := doRequest(req)
+
+	responseJSON := getResponse(resp)
+	itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
+	items = append(items, itemID)
+
+	turnPretty(responseJSON)
+	return items
+}
+*/
+
+func addItems(items []string) bool {
+	filePath := "item-ids.txt"
+
+	file, err := os.Create(filePath)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return
+		fmt.Println("Error creating file:", err)
+		return false
 	}
+	defer file.Close()
 
-	req, err = http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", mondayKey)
-
-	client = &http.Client{}
-	resp, err = client.Do(req)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	var responseJSON map[string]interface{}
-	err = json.NewDecoder(resp.Body).Decode(&responseJSON)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	prettyJSON, err = json.MarshalIndent(responseJSON, "", "  ")
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	fmt.Println(string(prettyJSON))
-
-	/*
-		// Deleting group.
-		query = `mutation { delete_group (board_id: ` + boardID + `, group_id: "` + groupID + `") { id deleted } }`
-
-		data := map[string]interface{}{
-			"query": query,
-		}
-
-		jsonData, err := json.Marshal(data)
+	for _, itemID := range items {
+		_, err = file.WriteString(itemID + "\n")
 		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return
+			fmt.Println("Error writing to file:", err)
+			return false
 		}
-
-		client = &http.Client{}
-		req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-		if err != nil {
-			fmt.Println("Error creating request:", err)
-			return
-		}
-
-		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("Authorization", mondayKey)
-
-		response, err := client.Do(req)
-		if err != nil {
-			fmt.Println("Error sending request:", err)
-			return
-		}
-		defer response.Body.Close()
-
-		var responseData map[string]interface{}
-		err = json.NewDecoder(response.Body).Decode(&responseData)
-		if err != nil {
-			fmt.Println("Error decoding JSON:", err)
-			return
-		}
-
-		prettyJSON, err = json.MarshalIndent(responseData, "", "  ")
-		if err != nil {
-			fmt.Println("Error formatting JSON:", err)
-			return
-		}
-
-		fmt.Println(string(prettyJSON))
-	*/
-
-	// Connecting to bambooHR and getting time off requests.
-	ctx = context.Background()
-	creds, err = kolla.Credentials(ctx, bambooConnector, customerID)
-	if err != nil {
-		fmt.Println("Error getting credentials.")
-		return
 	}
+	return true
+}
+
+func getItems() []string {
+	filePath := "item-ids.txt"
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+		return nil
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error reading file:", err)
+		return nil
+	}
+
+	return lines
+}
+
+func deleteItems(oldItems []string, url string, mondayKey string) bool {
+	for _, item := range oldItems {
+		query := "mutation { delete_item (item_id: " + item + ") { id }}"
+		payloadBytes := getPayload(query)
+		if payloadBytes == nil {
+			fmt.Println("Error getting payload.")
+			return false
+		}
+
+		req := getPostRequest(url, payloadBytes)
+		if req == nil {
+			fmt.Println("Error getting post request.")
+			return false
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", mondayKey)
+
+		resp := doRequest(req)
+		if resp == nil {
+			fmt.Println("Error getting response.")
+			return false
+		}
+		defer resp.Body.Close()
+
+		responseJSON := getResponse(resp)
+		if responseJSON == nil {
+			fmt.Println("Error getting JSON.")
+			return false
+		}
+		success := turnPretty(responseJSON)
+		if !success {
+			fmt.Println("Error turning JSON pretty.")
+			return false
+		}
+	}
+	return true
+}
+
+func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string, boardID string, groupID string, mondayKey string, mondayURL string, items []string) []string {
+	creds := getCreds(kolla, bambooConnector, customerID)
 
 	bambooKey := creds.Token
 	today := time.Now()
@@ -260,49 +416,35 @@ func main() {
 	start := today.Format("2006-01-02")
 	end := oneMonthFromToday.Format("2006-01-02")
 
-	url = "https://" + bambooKey + ":x@api.bamboohr.com/api/gateway.php/" + companyDomain + "/v1/time_off/requests/?start=" + start + "&end=" + end
-	client = &http.Client{}
-	req, err = http.NewRequest("GET", url, nil)
+	url := "https://" + bambooKey + ":x@api.bamboohr.com/api/gateway.php/" + companyDomain + "/v1/time_off/requests/?start=" + start + "&end=" + end
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
-		return
+		return nil
 	}
 
 	req.Header.Add("Accept", "application/json")
 
-	response, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		return
+	resp := doRequest(req)
+	if resp == nil {
+		fmt.Println("Error getting response.")
+		return nil
 	}
-	defer response.Body.Close()
+	defer resp.Body.Close()
 
-	responseData, err := ioutil.ReadAll(response.Body)
+	responseJSON, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading response:", err)
-		return
+		return nil
 	}
+	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseJSON)}
 
-	fmt.Println(&http.Client{})
-
-	//wrappedJSON := WrappedJSON{Data: json.RawMessage(responseData)}
-
-	prettyJSON, err = json.MarshalIndent(responseData, "", "    ")
+	prettyJSON, err := json.MarshalIndent(wrappedJSON, "", "    ")
 	if err != nil {
 		fmt.Println("Error formatting JSON:", err)
-		return
+		return nil
 	}
 
-	fmt.Println(string(prettyJSON))
-
-	// Write prettified JSON to a file
-	err = ioutil.WriteFile("output.json", prettyJSON, 0644)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return
-	}
-
-	// Turning json into better object.
 	var resObj People
 	json.Unmarshal(prettyJSON, &resObj)
 
@@ -313,165 +455,83 @@ func main() {
 		end := employee.End
 		status := employee.Status.Status
 		created := employee.Created
-		fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
+		amount := employee.Amount.Amount
+		unit := employee.Amount.Unit
+		combinedAmount := amount + " " + unit
+		var employeeNotes, managerNotes string
+		if employee.Notes.Employee != "" && employee.Notes.Manager != "" {
+			employeeNotes = employee.Notes.Employee
+			managerNotes = employee.Notes.Manager
+		} else if employee.Notes.Employee != "" && employee.Notes.Manager == "" {
+			employeeNotes = employee.Notes.Employee
+			managerNotes = ""
+		} else if employee.Notes.Employee == "" && employee.Notes.Manager != "" {
+			managerNotes = employee.Notes.Manager
+			employeeNotes = ""
+		}
+		fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created, "\t", combinedAmount, "\t", employeeNotes, "\t", managerNotes)
 
 		column_values := `"{\"text\":\"` + id + `\",
 							\"status\":\"` + status + `\",
 							\"date4\":\"` + start + `\",
 							\"date\":\"` + end + `\",
-							\"created1\":\"` + created + `\"}"`
+							\"created1\":\"` + created + `\",
+							\"text3\":\"` + combinedAmount + `\",
+							\"text2\":\"` + employeeNotes + `\",
+							\"text38\":\"` + managerNotes + `\"}"`
 
-		// Updating an item.
-		query = `mutation { 
-			create_item 
-				(
-					board_id: ` + boardID + `, 
-					group_id: "` + groupID + `", 
-					item_name: "` + name + `", 
-					column_values: ` + column_values + `
-				) 
-				{ 
-					id 
-				}
-			}`
+		query := `mutation {
+					create_item
+						(
+							board_id: ` + boardID + `,
+							group_id: "` + groupID + `",
+							item_name: "` + name + `",
+							column_values: ` + column_values + `
+						)
+						{
+							id
+						}
+					}`
 
-		url = "https://api.monday.com/v2"
-
-		data := map[string]interface{}{
-			"query": query,
+		payloadBytes := getPayload(query)
+		if payloadBytes == nil {
+			fmt.Println("Error getting payload.")
+			return nil
 		}
 
-		jsonData2, err := json.Marshal(data)
-		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return
-		}
-
-		client = &http.Client{}
-		req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData2))
-		if err != nil {
-			fmt.Println("Error creating request:", err)
-			return
+		req := getPostRequest(mondayURL, payloadBytes)
+		if req == nil {
+			fmt.Println("Error getting request.")
+			return nil
 		}
 
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Authorization", mondayKey)
 
-		response, err = client.Do(req)
-		if err != nil {
-			fmt.Println("Error sending request:", err)
-			return
-		}
-		defer response.Body.Close()
-
-		var responseData map[string]interface{}
-		err = json.NewDecoder(response.Body).Decode(&responseData)
-		if err != nil {
-			fmt.Println("Error decoding JSON:", err)
-			return
-		}
-		/*
-			prettyJSON, err = json.MarshalIndent(responseData, "", "  ")
-			if err != nil {
-				fmt.Println("Error formatting JSON:", err)
-				return
-			}
-
-			fmt.Println(string(prettyJSON))
-		*/
-	}
-
-	/*
-		// Deleting a board.
-		query = "mutation { delete_board (board_id: 5024805591) { id }}"
-
-		requestData := map[string]interface{}{
-			"query": query,
-		}
-
-		requestJSON, err := json.Marshal(requestData)
-		if err != nil {
-			fmt.Println("Error marshaling JSON:", err)
-			return
-		}
-
-		client = &http.Client{}
-		req, err = http.NewRequest("POST", url, bytes.NewBuffer(requestJSON))
-		if err != nil {
-			fmt.Println("Error creating request:", err)
-			return
-		}
-
-		req.Header.Add("Content-Type", "application/json")
-		req.Header.Add("Authorization", mondayKey)
-
-		response, err := client.Do(req)
-		if err != nil {
-			fmt.Println("Error sending request:", err)
-			return
-		}
-		defer response.Body.Close()
-
-		responseData, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			fmt.Println("Error reading response:", err)
-			return
-		}
-
-		var formattedJSON bytes.Buffer
-		err = json.Indent(&formattedJSON, responseData, "", "  ")
-		if err != nil {
-			fmt.Println("Error formatting JSON:", err)
-			return
-		}
-
-		fmt.Println(string(formattedJSON.Bytes()))
-	*/
-
-	// Creating a board.
-	/*
-		query = "mutation { create_board (board_name: \"my board\", board_kind: public) { id }}"
-
-		payload = map[string]interface{}{
-			"query": query,
-		}
-
-		payloadBytes, err = json.Marshal(payload)
-		if err != nil {
-			fmt.Println("Error marshaling JSON payload:", err)
-			return
-		}
-
-		req, err = http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
-		if err != nil {
-			fmt.Println("Error creating request:", err)
-			return
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", mondayKey)
-
-		client = &http.Client{}
-		resp, err = client.Do(req)
-		if err != nil {
-			fmt.Println("Error sending request:", err)
-			return
+		resp := doRequest(req)
+		if resp == nil {
+			fmt.Println("Error getting response.")
+			return nil
 		}
 		defer resp.Body.Close()
 
-		var result2 map[string]interface{}
-		err = json.NewDecoder(resp.Body).Decode(&result2)
-		if err != nil {
-			fmt.Println("Error decoding response:", err)
-			return
+		responseJSON := getResponse(resp)
+		if responseJSON == nil {
+			fmt.Println("Error getting JSON.")
+			return nil
+		}
+		itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
+		items = append(items, itemID)
+		if items == nil {
+			fmt.Println("Error appending items.")
+			return nil
 		}
 
-		prettyJSON, err = json.MarshalIndent(result2, "", "  ")
-		if err != nil {
-			fmt.Println("Error formatting JSON:", err)
-			return
+		success := turnPretty(responseJSON)
+		if !success {
+			fmt.Println("Error turning JSON pretty.")
+			return nil
 		}
-
-		fmt.Println(string(prettyJSON))
-	*/
+	}
+	return items
 }
