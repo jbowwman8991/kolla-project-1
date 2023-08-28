@@ -347,7 +347,6 @@ func addItems(items []string) bool {
 
 func getItems() []string {
 	filePath := "item-ids.txt"
-
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -356,7 +355,6 @@ func getItems() []string {
 	defer file.Close()
 
 	var lines []string
-
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
@@ -374,17 +372,37 @@ func deleteItems(oldItems []string, url string, mondayKey string) bool {
 	for _, item := range oldItems {
 		query := "mutation { delete_item (item_id: " + item + ") { id }}"
 		payloadBytes := getPayload(query)
+		if payloadBytes == nil {
+			fmt.Println("Error getting payload.")
+			return false
+		}
 
 		req := getPostRequest(url, payloadBytes)
+		if req == nil {
+			fmt.Println("Error getting post request.")
+			return false
+		}
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", mondayKey)
 
 		resp := doRequest(req)
+		if resp == nil {
+			fmt.Println("Error getting response.")
+			return false
+		}
 		defer resp.Body.Close()
 
 		responseJSON := getResponse(resp)
-		turnPretty(responseJSON)
+		if responseJSON == nil {
+			fmt.Println("Error getting JSON.")
+			return false
+		}
+		success := turnPretty(responseJSON)
+		if !success {
+			fmt.Println("Error turning JSON pretty.")
+			return false
+		}
 	}
 	return true
 }
