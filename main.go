@@ -58,10 +58,8 @@ type Notes struct {
 }
 
 func main() {
-	// Getting all old items.
 	oldItems := getItems()
 
-	// Getting ENV variables from text file.
 	apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain := getVars()
 	fmt.Println(bambooConnector, bambooCustomerID, companyDomain)
 
@@ -78,7 +76,6 @@ func main() {
 
 	deleteItems(oldItems, url, mondayKey)
 
-	// Getting monday.com account details.
 	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
 	payloadBytes := getPayload(query)
 
@@ -93,7 +90,6 @@ func main() {
 	responseJSON := getResponse(resp)
 	turnPretty(responseJSON)
 
-	// Getting monday.com board.
 	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
 	payloadBytes = getPayload(query)
 
@@ -107,7 +103,6 @@ func main() {
 	responseJSON = getResponse(resp)
 	turnPretty(responseJSON)
 
-	// Populating monday.com board.
 	var items []string
 	/*for i := 0; i < 3; i++ {
 		name := "test"
@@ -335,7 +330,6 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 }
 
 func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string, boardID string, groupID string, mondayKey string, mondayURL string, items []string) []string {
-	// Connecting to bambooHR and getting time off requests.
 	creds := getCreds(kolla, bambooConnector, customerID)
 
 	bambooKey := creds.Token
@@ -384,15 +378,31 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 		end := employee.End
 		status := employee.Status.Status
 		created := employee.Created
-		fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
+		amount := employee.Amount.Amount
+		unit := employee.Amount.Unit
+		combinedAmount := amount + " " + unit
+		var employeeNotes, managerNotes string
+		if employee.Notes.Employee != "" && employee.Notes.Manager != "" {
+			employeeNotes = employee.Notes.Employee
+			managerNotes = employee.Notes.Manager
+		} else if employee.Notes.Employee != "" && employee.Notes.Manager == "" {
+			employeeNotes = employee.Notes.Employee
+			managerNotes = ""
+		} else if employee.Notes.Employee == "" && employee.Notes.Manager != "" {
+			managerNotes = employee.Notes.Manager
+			employeeNotes = ""
+		}
+		fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created, "\t", combinedAmount, "\t", employeeNotes, "\t", managerNotes)
 
 		column_values := `"{\"text\":\"` + id + `\",
-									\"status\":\"` + status + `\",
-									\"date4\":\"` + start + `\",
-									\"date\":\"` + end + `\",
-									\"created1\":\"` + created + `\"}"`
+							\"status\":\"` + status + `\",
+							\"date4\":\"` + start + `\",
+							\"date\":\"` + end + `\",
+							\"created1\":\"` + created + `\",
+							\"text3\":\"` + combinedAmount + `\",
+							\"text2\":\"` + employeeNotes + `\",
+							\"text38\":\"` + managerNotes + `\"}"`
 
-		// Updating an item.
 		query := `mutation {
 					create_item
 						(
