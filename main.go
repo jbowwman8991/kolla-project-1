@@ -52,9 +52,16 @@ type Notes struct {
 
 func main() {
 	oldItems := getItems()
+	if oldItems == nil {
+		fmt.Println("Error getting old items.")
+		return
+	}
 
 	apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain := getVars()
-	fmt.Println(bambooConnector, bambooCustomerID, companyDomain)
+	if apiKey == "" {
+		fmt.Println("Error getting env vars.")
+		return
+	}
 
 	kolla, err := kc.New(apiKey)
 	if err != nil {
@@ -63,38 +70,87 @@ func main() {
 	}
 
 	creds := getCreds(kolla, mondayConnector, kollaCustomerID)
+	if creds == nil {
+		fmt.Println("Error getting credentials.")
+		return
+	}
 	mondayKey := creds.Token
 
 	url := "https://api.monday.com/v2"
 
-	deleteItems(oldItems, url, mondayKey)
+	success := deleteItems(oldItems, url, mondayKey)
+	if !success {
+		fmt.Println("Error deleting old items.")
+		return
+	}
 
 	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
 	payloadBytes := getPayload(query)
+	if payloadBytes == nil {
+		fmt.Println("Error getting payload.")
+		return
+	}
 
 	req := getPostRequest(url, payloadBytes)
+	if req == nil {
+		fmt.Println("Error getting post request.")
+		return
+	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
 
 	resp := doRequest(req)
+	if resp == nil {
+		fmt.Println("Error getting response.")
+		return
+	}
 	defer resp.Body.Close()
 
 	responseJSON := getResponse(resp)
-	turnPretty(responseJSON)
+	if responseJSON == nil {
+		fmt.Println("Error getting response JSON.")
+		return
+	}
+	success = turnPretty(responseJSON)
+	if !success {
+		fmt.Println("Error in turning JSON pretty.")
+		return
+	}
 
 	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
 	payloadBytes = getPayload(query)
+	if payloadBytes == nil {
+		fmt.Println("Error getting payload.")
+		return
+	}
 
 	req = getPostRequest(url, payloadBytes)
+	if req == nil {
+		fmt.Println("Error getting post request.")
+		return
+	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
 
 	resp = doRequest(req)
+	if resp == nil {
+		fmt.Println("Error getting response.")
+		return
+	}
+	defer resp.Body.Close()
 
 	responseJSON = getResponse(resp)
-	turnPretty(responseJSON)
+	if responseJSON == nil {
+		fmt.Println("Error getting response JSON.")
+		return
+	}
+	success = turnPretty(responseJSON)
+	if !success {
+		fmt.Println("Error in turning JSON pretty.")
+		return
+	}
 
 	var items []string
 	/*for i := 0; i < 3; i++ {
@@ -108,8 +164,16 @@ func main() {
 	}*/
 
 	items = bamboo(kolla, bambooConnector, bambooCustomerID, companyDomain, boardID, groupID, mondayKey, url, items)
+	if items == nil {
+		fmt.Println("Error getting items.")
+		return
+	}
 
-	addItems(items)
+	success = addItems(items)
+	if !success {
+		fmt.Println("Error adding items.")
+		return
+	}
 }
 
 func getVars() (string, string, string, string, string, string, string, string) {
@@ -211,13 +275,14 @@ func getResponse(resp *http.Response) map[string]interface{} {
 	return responseJSON
 }
 
-func turnPretty(responseJSON map[string]interface{}) {
+func turnPretty(responseJSON map[string]interface{}) bool {
 	prettyJSON, err := json.MarshalIndent(responseJSON, "", "  ")
 	if err != nil {
 		fmt.Println("Error formatting JSON:", err)
-		return
+		return false
 	}
 	fmt.Println(string(prettyJSON))
+	return true
 }
 
 /*
@@ -260,13 +325,13 @@ func createTestEmployee(name string, id string, start string, end string, status
 }
 */
 
-func addItems(items []string) {
+func addItems(items []string) bool {
 	filePath := "item-ids.txt"
 
 	file, err := os.Create(filePath)
 	if err != nil {
 		fmt.Println("Error creating file:", err)
-		return
+		return false
 	}
 	defer file.Close()
 
@@ -274,9 +339,10 @@ func addItems(items []string) {
 		_, err = file.WriteString(itemID + "\n")
 		if err != nil {
 			fmt.Println("Error writing to file:", err)
-			return
+			return false
 		}
 	}
+	return true
 }
 
 func getItems() []string {
@@ -304,7 +370,7 @@ func getItems() []string {
 	return lines
 }
 
-func deleteItems(oldItems []string, url string, mondayKey string) {
+func deleteItems(oldItems []string, url string, mondayKey string) bool {
 	for _, item := range oldItems {
 		query := "mutation { delete_item (item_id: " + item + ") { id }}"
 		payloadBytes := getPayload(query)
@@ -320,6 +386,7 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 		responseJSON := getResponse(resp)
 		turnPretty(responseJSON)
 	}
+	return true
 }
 
 func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string, boardID string, groupID string, mondayKey string, mondayURL string, items []string) []string {
