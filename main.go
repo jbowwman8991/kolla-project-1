@@ -426,6 +426,10 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 	req.Header.Add("Accept", "application/json")
 
 	resp := doRequest(req)
+	if resp == nil {
+		fmt.Println("Error getting response.")
+		return nil
+	}
 	defer resp.Body.Close()
 
 	responseJSON, err := ioutil.ReadAll(resp.Body)
@@ -490,20 +494,44 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 					}`
 
 		payloadBytes := getPayload(query)
+		if payloadBytes == nil {
+			fmt.Println("Error getting payload.")
+			return nil
+		}
 
 		req := getPostRequest(mondayURL, payloadBytes)
+		if req == nil {
+			fmt.Println("Error getting request.")
+			return nil
+		}
 
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Authorization", mondayKey)
 
 		resp := doRequest(req)
+		if resp == nil {
+			fmt.Println("Error getting response.")
+			return nil
+		}
 		defer resp.Body.Close()
 
 		responseJSON := getResponse(resp)
+		if responseJSON == nil {
+			fmt.Println("Error getting JSON.")
+			return nil
+		}
 		itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
 		items = append(items, itemID)
+		if items == nil {
+			fmt.Println("Error appending items.")
+			return nil
+		}
 
-		turnPretty(responseJSON)
+		success := turnPretty(responseJSON)
+		if !success {
+			fmt.Println("Error turning JSON pretty.")
+			return nil
+		}
 	}
 	return items
 }
