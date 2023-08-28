@@ -109,12 +109,19 @@ func main() {
 
 	// Populating monday.com board.
 	var items []string
-	for i := 0; i < 3; i++ {
-		items = createEmployee(boardID, groupID, url, mondayKey, items)
-	}
-	addItems(items)
+	/*for i := 0; i < 3; i++ {
+		name := "test"
+		id := "1"
+		start := "2023-09-09"
+		end := "2023-09-09"
+		status := "approved"
+		created := "2023-09-09"
+		items = createTestEmployee(name, id, start, end, status, created, boardID, groupID, url, mondayKey, items)
+	}*/
 
-	bamboo(kolla, bambooConnector, bambooCustomerID, companyDomain)
+	items = bamboo(kolla, bambooConnector, bambooCustomerID, companyDomain, boardID, groupID, mondayKey, url, items)
+
+	addItems(items)
 }
 
 func getVars() (string, string, string, string, string, string, string, string) {
@@ -225,13 +232,8 @@ func turnPretty(responseJSON map[string]interface{}) {
 	fmt.Println(string(prettyJSON))
 }
 
-func createEmployee(boardID string, groupID string, url string, mondayKey string, items []string) []string {
-	name := "test"
-	id := "1"
-	start := "2023-09-09"
-	end := "2023-09-09"
-	status := "approved"
-	created := "2023-09-09"
+/*
+func createTestEmployee(name string, id string, start string, end string, status string, created string, boardID string, groupID string, url string, mondayKey string, items []string) []string {
 	fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
 
 	column_values := `"{\"text\":\"` + id + `\",
@@ -268,6 +270,7 @@ func createEmployee(boardID string, groupID string, url string, mondayKey string
 	turnPretty(responseJSON)
 	return items
 }
+*/
 
 func addItems(items []string) {
 	filePath := "item-ids.txt"
@@ -331,7 +334,7 @@ func deleteItems(oldItems []string, url string, mondayKey string) {
 	}
 }
 
-func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string) {
+func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string, boardID string, groupID string, mondayKey string, mondayURL string, items []string) []string {
 	// Connecting to bambooHR and getting time off requests.
 	creds := getCreds(kolla, bambooConnector, customerID)
 
@@ -345,7 +348,7 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		fmt.Println("Error creating request:", err)
-		return
+		return nil
 	}
 
 	req.Header.Add("Accept", "application/json")
@@ -356,98 +359,68 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 	responseJSON, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading response:", err)
-		return
+		return nil
 	}
 	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseJSON)}
 
 	prettyJSON, err := json.MarshalIndent(wrappedJSON, "", "    ")
 	if err != nil {
 		fmt.Println("Error formatting JSON:", err)
-		return
+		return nil
 	}
 	err = ioutil.WriteFile("output.json", prettyJSON, 0644)
 	if err != nil {
 		fmt.Println("Error writing to file:", err)
-		return
+		return nil
 	}
 
 	var resObj People
 	json.Unmarshal(prettyJSON, &resObj)
-	fmt.Println(resObj.Employees)
 
-	/*
-		for _, employee := range resObj.Employees {
-			name := employee.Name
-			id := employee.EmployeeID
-			start := employee.Start
-			end := employee.End
-			status := employee.Status.Status
-			created := employee.Created
-			fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
+	for _, employee := range resObj.Employees {
+		name := employee.Name
+		id := employee.EmployeeID
+		start := employee.Start
+		end := employee.End
+		status := employee.Status.Status
+		created := employee.Created
+		fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
 
-			column_values := `"{\"text\":\"` + id + `\",
-								\"status\":\"` + status + `\",
-								\"date4\":\"` + start + `\",
-								\"date\":\"` + end + `\",
-								\"created1\":\"` + created + `\"}"`
+		column_values := `"{\"text\":\"` + id + `\",
+									\"status\":\"` + status + `\",
+									\"date4\":\"` + start + `\",
+									\"date\":\"` + end + `\",
+									\"created1\":\"` + created + `\"}"`
 
-			// Updating an item.
-			query = `mutation {
-				create_item
-					(
-						board_id: ` + boardID + `,
-						group_id: "` + groupID + `",
-						item_name: "` + name + `",
-						column_values: ` + column_values + `
-					)
-					{
-						id
-					}
-				}`
+		// Updating an item.
+		query := `mutation {
+					create_item
+						(
+							board_id: ` + boardID + `,
+							group_id: "` + groupID + `",
+							item_name: "` + name + `",
+							column_values: ` + column_values + `
+						)
+						{
+							id
+						}
+					}`
 
-			url = "https://api.monday.com/v2"
+		payloadBytes := getPayload(query)
 
-			data := map[string]interface{}{
-				"query": query,
-			}
+		req := getPostRequest(mondayURL, payloadBytes)
 
-			jsonData2, err := json.Marshal(data)
-			if err != nil {
-				fmt.Println("Error marshaling JSON:", err)
-				return
-			}
+		req.Header.Add("Content-Type", "application/json")
+		req.Header.Add("Authorization", mondayKey)
 
-			client = &http.Client{}
-			req, err = http.NewRequest("POST", url, bytes.NewBuffer(jsonData2))
-			if err != nil {
-				fmt.Println("Error creating request:", err)
-				return
-			}
+		resp := doRequest(req)
+		defer resp.Body.Close()
 
-			req.Header.Add("Content-Type", "application/json")
-			req.Header.Add("Authorization", mondayKey)
+		responseJSON := getResponse(resp)
+		itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
+		items = append(items, itemID)
 
-			response, err = client.Do(req)
-			if err != nil {
-				fmt.Println("Error sending request:", err)
-				return
-			}
-			defer response.Body.Close()
-
-			var responseData map[string]interface{}
-			err = json.NewDecoder(response.Body).Decode(&responseData)
-			if err != nil {
-				fmt.Println("Error decoding JSON:", err)
-				return
-			}
-
-			prettyJSON, err = json.MarshalIndent(responseData, "", "  ")
-			if err != nil {
-				fmt.Println("Error formatting JSON:", err)
-				return
-			}
-
-			fmt.Println(string(prettyJSON))
-
-		}*/
+		turnPretty(responseJSON)
+	}
+	return items
 }
