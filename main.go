@@ -30,7 +30,6 @@ type Employee struct {
 	Start      string `json:"start"`
 	End        string `json:"end"`
 	Created    string `json:"created"`
-	Type       Type   `json:"type"`
 	Amount     Amount `json:"amount"`
 	Notes      Notes  `json:"notes"`
 }
@@ -39,12 +38,6 @@ type Status struct {
 	LastChanged         string `json:"lastChanged"`
 	LastChangedByUserId string `json:"lastChangedByUserId"`
 	Status              string `json:"status"`
-}
-
-type Type struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Icon string `json:"icon"`
 }
 
 type Amount struct {
