@@ -355,11 +355,6 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 		fmt.Println("Error formatting JSON:", err)
 		return nil
 	}
-	err = ioutil.WriteFile("output.json", prettyJSON, 0644)
-	if err != nil {
-		fmt.Println("Error writing to file:", err)
-		return nil
-	}
 
 	var resObj People
 	json.Unmarshal(prettyJSON, &resObj)
