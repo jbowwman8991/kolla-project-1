@@ -61,8 +61,7 @@ func main() {
 	// Getting old items from the Monday board and error checking to see if something was returned.
 	oldItems := getItems()
 	if oldItems == nil {
-		fmt.Println("Error getting old items.")
-		return
+		fmt.Println("Getting old items it empty.")
 	}
 
 	// Getting environment variables from a text file and error checking to see if something was returned.
@@ -255,6 +254,7 @@ func getVars() (string, string, string, string, string, string, string, string) 
 		fmt.Println("Error reading the file:", err)
 		return "", "", "", "", "", "", "", ""
 	}
+	fmt.Println(apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain)
 
 	return apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain
 }
@@ -264,7 +264,7 @@ func getCreds(kolla *kc.Client, connector string, customerID string) *kc.Credent
 	ctx := context.Background()
 	creds, err := kolla.Credentials(ctx, connector, customerID)
 	if err != nil {
-		fmt.Println("Error getting credentials.")
+		fmt.Println("Error getting credentials.", err)
 		return nil
 	}
 	return creds
