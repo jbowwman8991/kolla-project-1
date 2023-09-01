@@ -15,14 +15,17 @@ import (
 	"github.com/kollalabs/sdk-go/kc"
 )
 
+// Struct to help organize employee info.
 type WrappedJSON struct {
 	Data interface{} `json:"data"`
 }
 
+// People struct to hold an array of all of the employee time-off data.
 type People struct {
 	Employees []Employee `json:"data"`
 }
 
+// Employee struct to hold info about each time-off request.
 type Employee struct {
 	EmployeeID string `json:"employeeId"`
 	Status     Status `json:"status"`
@@ -34,41 +37,49 @@ type Employee struct {
 	Notes      Notes  `json:"notes"`
 }
 
+// Status struct to hold info about the status of a time-off request.
 type Status struct {
 	LastChanged         string `json:"lastChanged"`
 	LastChangedByUserId string `json:"lastChangedByUserId"`
 	Status              string `json:"status"`
 }
 
+// Amount struct to hold info about the amount of time of a time-off request.
 type Amount struct {
 	Unit   string `json:"unit"`
 	Amount string `json:"amount"`
 }
 
+// Notes struct to hole manager and/or employee notes fora time-off request.
 type Notes struct {
 	Manager  string `json:"manager"`
 	Employee string `json:"employee"`
 }
 
+// Main
 func main() {
+	// Getting old items from the Monday board and error checking to see if something was returned.
 	oldItems := getItems()
 	if oldItems == nil {
 		fmt.Println("Error getting old items.")
 		return
 	}
 
+	// Getting environment variables from a text file and error checking to see if something was returned.
 	apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain := getVars()
 	if apiKey == "" {
 		fmt.Println("Error getting env vars.")
 		return
 	}
 
+	// Connecting to Kolla and error checking.
 	kolla, err := kc.New(apiKey)
 	if err != nil {
 		fmt.Println("Error connecting to Kolla.")
 		panic(err)
 	}
 
+	// Getting Monday credentials from Kolla and Monday connector and error checking.
 	creds := getCreds(kolla, mondayConnector, kollaCustomerID)
 	if creds == nil {
 		fmt.Println("Error getting credentials.")
@@ -78,12 +89,14 @@ func main() {
 
 	url := "https://api.monday.com/v2"
 
+	// Deleting the old items from the Monday board and error checking to see if it was successful.
 	success := deleteItems(oldItems, url, mondayKey)
 	if !success {
 		fmt.Println("Error deleting old items.")
 		return
 	}
 
+	// Creating a query to the Monday account and getting the payload and error checking.
 	query := "query { users { account { id show_timeline_weekends tier slug plan { period }}}} "
 	payloadBytes := getPayload(query)
 	if payloadBytes == nil {
@@ -91,15 +104,18 @@ func main() {
 		return
 	}
 
+	// Creating the POST request and error checking.
 	req := getPostRequest(url, payloadBytes)
 	if req == nil {
 		fmt.Println("Error getting post request.")
 		return
 	}
 
+	// Setting the headers for the request.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
 
+	// Getting the response from the request and error checking.
 	resp := doRequest(req)
 	if resp == nil {
 		fmt.Println("Error getting response.")
@@ -107,17 +123,21 @@ func main() {
 	}
 	defer resp.Body.Close()
 
+	// Getting the response JSON and error checking.
 	responseJSON := getResponse(resp)
 	if responseJSON == nil {
 		fmt.Println("Error getting response JSON.")
 		return
 	}
+
+	// Turning the JSON "pretty" to print out nicely and error checking.
 	success = turnPretty(responseJSON)
 	if !success {
 		fmt.Println("Error in turning JSON pretty.")
 		return
 	}
 
+	// Creating a query to the Monday board and getting the payload and error checking.
 	query = "query { boards (ids: " + boardID + ") { name state id groups { title id } columns { type } }}"
 	payloadBytes = getPayload(query)
 	if payloadBytes == nil {
@@ -125,15 +145,18 @@ func main() {
 		return
 	}
 
+	// Creating the POST request and error checking.
 	req = getPostRequest(url, payloadBytes)
 	if req == nil {
 		fmt.Println("Error getting post request.")
 		return
 	}
 
+	// Setting the headers for the request.
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", mondayKey)
 
+	// Getting the response from the request and error checking.
 	resp = doRequest(req)
 	if resp == nil {
 		fmt.Println("Error getting response.")
@@ -141,34 +164,42 @@ func main() {
 	}
 	defer resp.Body.Close()
 
+	// Getting the response JSON and error checking.
 	responseJSON = getResponse(resp)
 	if responseJSON == nil {
 		fmt.Println("Error getting response JSON.")
 		return
 	}
+
+	// Turning JSON "pretty" to print out nicely and error checking.
 	success = turnPretty(responseJSON)
 	if !success {
 		fmt.Println("Error in turning JSON pretty.")
 		return
 	}
 
+	// Creating an array of employee time-off request items.
 	var items []string
-	/*for i := 0; i < 3; i++ {
-		name := "test"
-		id := "1"
-		start := "2023-09-09"
-		end := "2023-09-09"
-		status := "approved"
-		created := "2023-09-09"
-		items = createTestEmployee(name, id, start, end, status, created, boardID, groupID, url, mondayKey, items)
+	/*
+		// Optional testing.
+		for i := 0; i < 3; i++ {
+			name := "test"
+			id := "1"
+			start := "2023-09-09"
+			end := "2023-09-09"
+			status := "approved"
+			created := "2023-09-09"
+			items = createTestEmployee(name, id, start, end, status, created, boardID, groupID, url, mondayKey, items)
 	}*/
 
+	// Filling the array with bambooHR data and error checking.
 	items = bamboo(kolla, bambooConnector, bambooCustomerID, companyDomain, boardID, groupID, mondayKey, url, items)
 	if items == nil {
 		fmt.Println("Error getting items.")
 		return
 	}
 
+	// Adding the time-off IDs to a text file to keep track of the old items.
 	success = addItems(items)
 	if !success {
 		fmt.Println("Error adding items.")
@@ -176,9 +207,11 @@ func main() {
 	}
 }
 
+// Function to get the environment from a text file.
 func getVars() (string, string, string, string, string, string, string, string) {
 	var apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain string
 
+	// Opening the text file and error checking.
 	file, err := os.Open("env-vars.txt")
 	if err != nil {
 		fmt.Println("Error opening the file:", err)
@@ -186,6 +219,7 @@ func getVars() (string, string, string, string, string, string, string, string) 
 	}
 	defer file.Close()
 
+	// Scanning the text file to file the key value pairs that are stored as KEY=value.
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -216,6 +250,7 @@ func getVars() (string, string, string, string, string, string, string, string) 
 		}
 	}
 
+	// Error checking.
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error reading the file:", err)
 		return "", "", "", "", "", "", "", ""
@@ -224,6 +259,7 @@ func getVars() (string, string, string, string, string, string, string, string) 
 	return apiKey, mondayConnector, kollaCustomerID, boardID, groupID, bambooConnector, bambooCustomerID, companyDomain
 }
 
+// Function to get credentials from Kolla using a specific connector and customerID.
 func getCreds(kolla *kc.Client, connector string, customerID string) *kc.Credentials {
 	ctx := context.Background()
 	creds, err := kolla.Credentials(ctx, connector, customerID)
@@ -234,6 +270,7 @@ func getCreds(kolla *kc.Client, connector string, customerID string) *kc.Credent
 	return creds
 }
 
+// Function to get the payload my marshaling the query.
 func getPayload(query string) []byte {
 	payload := map[string]interface{}{
 		"query": query,
@@ -246,6 +283,7 @@ func getPayload(query string) []byte {
 	return payloadBytes
 }
 
+// Function to get the POST request given the url and payload.
 func getPostRequest(url string, payloadBytes []byte) *http.Request {
 	req, err := http.NewRequest("POST", url, bytes.NewReader(payloadBytes))
 	if err != nil {
@@ -255,6 +293,7 @@ func getPostRequest(url string, payloadBytes []byte) *http.Request {
 	return req
 }
 
+// Function to do the request and get the response.
 func doRequest(req *http.Request) *http.Response {
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -265,6 +304,7 @@ func doRequest(req *http.Request) *http.Response {
 	return resp
 }
 
+// Function to get the response JSON from the response.
 func getResponse(resp *http.Response) map[string]interface{} {
 	var responseJSON map[string]interface{}
 	err := json.NewDecoder(resp.Body).Decode(&responseJSON)
@@ -275,6 +315,7 @@ func getResponse(resp *http.Response) map[string]interface{} {
 	return responseJSON
 }
 
+// Function to turn the JSON "pretty" and print it out.
 func turnPretty(responseJSON map[string]interface{}) bool {
 	prettyJSON, err := json.MarshalIndent(responseJSON, "", "  ")
 	if err != nil {
@@ -286,6 +327,7 @@ func turnPretty(responseJSON map[string]interface{}) bool {
 }
 
 /*
+// Optional function to create test employees.
 func createTestEmployee(name string, id string, start string, end string, status string, created string, boardID string, groupID string, url string, mondayKey string, items []string) []string {
 	fmt.Println(name, "\t", id, "\t", status, "\t", start, "\t", end, "\t", created)
 
@@ -325,9 +367,11 @@ func createTestEmployee(name string, id string, start string, end string, status
 }
 */
 
+// Function to add the item IDs to a text file to store as the old items.
 func addItems(items []string) bool {
 	filePath := "item-ids.txt"
 
+	// Creating the file and error checking.
 	file, err := os.Create(filePath)
 	if err != nil {
 		fmt.Println("Error creating file:", err)
@@ -335,6 +379,7 @@ func addItems(items []string) bool {
 	}
 	defer file.Close()
 
+	// Adding the item IDs to the file and error checking.
 	for _, itemID := range items {
 		_, err = file.WriteString(itemID + "\n")
 		if err != nil {
@@ -345,8 +390,11 @@ func addItems(items []string) bool {
 	return true
 }
 
+// Function to get all of the old items from a text file.
 func getItems() []string {
 	filePath := "item-ids.txt"
+
+	// Opening the file and error checking.
 	file, err := os.Open(filePath)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -354,12 +402,12 @@ func getItems() []string {
 	}
 	defer file.Close()
 
+	// Getting the lines from the file and error checking.
 	var lines []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
-
 	if err := scanner.Err(); err != nil {
 		fmt.Println("Error reading file:", err)
 		return nil
@@ -368,8 +416,11 @@ func getItems() []string {
 	return lines
 }
 
+// Function to delete all the old items off of the Monday board.
 func deleteItems(oldItems []string, url string, mondayKey string) bool {
+	// Looping through all the old items.
 	for _, item := range oldItems {
+		// Creating a query to the Monday board and getting the payload and error checking.
 		query := "mutation { delete_item (item_id: " + item + ") { id }}"
 		payloadBytes := getPayload(query)
 		if payloadBytes == nil {
@@ -377,15 +428,18 @@ func deleteItems(oldItems []string, url string, mondayKey string) bool {
 			return false
 		}
 
+		// Creating the POST request and error checking.
 		req := getPostRequest(url, payloadBytes)
 		if req == nil {
 			fmt.Println("Error getting post request.")
 			return false
 		}
 
+		// Setting the headers for the request.
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", mondayKey)
 
+		// Getting the response from the request and error checking.
 		resp := doRequest(req)
 		if resp == nil {
 			fmt.Println("Error getting response.")
@@ -393,11 +447,14 @@ func deleteItems(oldItems []string, url string, mondayKey string) bool {
 		}
 		defer resp.Body.Close()
 
+		// Getting the response JSON and error checking.
 		responseJSON := getResponse(resp)
 		if responseJSON == nil {
 			fmt.Println("Error getting JSON.")
 			return false
 		}
+
+		// Turning JSON "pretty" to print out nicely and error checking.
 		success := turnPretty(responseJSON)
 		if !success {
 			fmt.Println("Error turning JSON pretty.")
@@ -407,15 +464,19 @@ func deleteItems(oldItems []string, url string, mondayKey string) bool {
 	return true
 }
 
+// Function to get the time-off requests and add them to the Monday board.
 func bamboo(kolla *kc.Client, bambooConnector string, customerID string, companyDomain string, boardID string, groupID string, mondayKey string, mondayURL string, items []string) []string {
+	// Getting the bambooHR credentials.
 	creds := getCreds(kolla, bambooConnector, customerID)
 
+	// Creating and assigning variables to build the bambooHR url.
 	bambooKey := creds.Token
 	today := time.Now()
 	oneMonthFromToday := today.AddDate(0, 1, 0)
 	start := today.Format("2006-01-02")
 	end := oneMonthFromToday.Format("2006-01-02")
 
+	// Making the GET request to bambooHR and error checking.
 	url := "https://" + bambooKey + ":x@api.bamboohr.com/api/gateway.php/" + companyDomain + "/v1/time_off/requests/?start=" + start + "&end=" + end
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -423,8 +484,10 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 		return nil
 	}
 
+	// Adding a request header.
 	req.Header.Add("Accept", "application/json")
 
+	// Doing the request and getting a response and error checking.
 	resp := doRequest(req)
 	if resp == nil {
 		fmt.Println("Error getting response.")
@@ -432,23 +495,28 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 	}
 	defer resp.Body.Close()
 
+	// Getting the response JSON from the response and error checking.
 	responseJSON, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		fmt.Println("Error reading response:", err)
 		return nil
 	}
-	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseJSON)}
 
+	// Wrapping the JSON and making the JSON "pretty" and error checking.
+	wrappedJSON := WrappedJSON{Data: json.RawMessage(responseJSON)}
 	prettyJSON, err := json.MarshalIndent(wrappedJSON, "", "    ")
 	if err != nil {
 		fmt.Println("Error formatting JSON:", err)
 		return nil
 	}
 
+	// Putting the JSON into the People struct.
 	var resObj People
 	json.Unmarshal(prettyJSON, &resObj)
 
+	// Looping through all the time-off requests and adding each on the the Monday board.
 	for _, employee := range resObj.Employees {
+		// Creating and assigning query variables and creating the query.
 		name := employee.Name
 		id := employee.EmployeeID
 		start := employee.Start
@@ -493,21 +561,25 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 						}
 					}`
 
+		// Getting the payload from the query and error checking.
 		payloadBytes := getPayload(query)
 		if payloadBytes == nil {
 			fmt.Println("Error getting payload.")
 			return nil
 		}
 
+		// Getting the POST request and error checking.
 		req := getPostRequest(mondayURL, payloadBytes)
 		if req == nil {
 			fmt.Println("Error getting request.")
 			return nil
 		}
 
+		// Adding request headers.
 		req.Header.Add("Content-Type", "application/json")
 		req.Header.Add("Authorization", mondayKey)
 
+		// Doing the request and getting a response and error checking.
 		resp := doRequest(req)
 		if resp == nil {
 			fmt.Println("Error getting response.")
@@ -515,11 +587,14 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 		}
 		defer resp.Body.Close()
 
+		// Getting the response JSON from the response and error checking.
 		responseJSON := getResponse(resp)
 		if responseJSON == nil {
 			fmt.Println("Error getting JSON.")
 			return nil
 		}
+
+		// Getting the item ID from the time-off request and appending it to an array and error checking.
 		itemID := responseJSON["data"].(map[string]interface{})["create_item"].(map[string]interface{})["id"].(string)
 		items = append(items, itemID)
 		if items == nil {
@@ -527,6 +602,7 @@ func bamboo(kolla *kc.Client, bambooConnector string, customerID string, company
 			return nil
 		}
 
+		// Turning the JSON "pretty" and error checking.
 		success := turnPretty(responseJSON)
 		if !success {
 			fmt.Println("Error turning JSON pretty.")
