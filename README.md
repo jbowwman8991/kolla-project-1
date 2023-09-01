@@ -1,13 +1,17 @@
 # Kolla Project 1
 
-### Description 
+### Jake Bowman
+
+---
+
+## Description 
 <p>
 This project was designed as a learning experience using the KollaConnect platform. The idea was to integrate two softwares into a usable workflow to improve the flow between the two and minimize human intervention. 
 </p>
 
 ---
 
-### Execution 
+## Execution 
 <p>
 For this project, the two softwares that were chosen were Monday.com and BambooHR. The idea was to take the time-off requests page from BambooHR and integrate it with Monday.com to provide an organized, visually-appealing way to view the time-off requests for a company. 
 <br>
@@ -22,7 +26,7 @@ Error checking and overall code flow was done in the way that I saw it most usef
 
 --- 
 
-### References and Links
+## References and Links
 <p>
 Kolla: <a href="https://getkolla.com">getkolla.com</a>
 <br>
