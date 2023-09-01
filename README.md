@@ -1,15 +1,9 @@
 # Kolla Project 1
 
-### Jake Bowman
-
----
-
 ## Description 
 <p>
 This project was designed as a learning experience using the KollaConnect platform. The idea was to integrate two softwares into a usable workflow to improve the flow between the two and minimize human intervention. 
 </p>
-
----
 
 ## Execution 
 <p>
@@ -23,8 +17,6 @@ To allow for updating, when a time-off request was added to the Monday.com board
 <br>
 Error checking and overall code flow was done in the way that I saw it most useful. 
 </p>
-
---- 
 
 ## References and Links
 <p>
