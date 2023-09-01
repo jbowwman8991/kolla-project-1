@@ -4,9 +4,11 @@
 <p>
 This project was designed as a learning experience using the KollaConnect platform. The idea was to integrate two softwares into a usable workflow to improve the flow between the two and minimize human intervention. 
 </p>
+
 ---
 
 ### Execution 
+<p>
 For this project, the two softwares that were chosen were Monday.com and BambooHR. The idea was to take the time-off requests page from BambooHR and integrate it with Monday.com to provide an organized, visually-appealing way to view the time-off requests for a company. 
 <br>
 Requests were made to Kolla to get both the Monday.com and BambooHR credentials to get each API Key that would be needed to make requests to each account. 
@@ -16,6 +18,8 @@ Requests were then made to Monday.com to get the correct board. Then, requests w
 To allow for updating, when a time-off request was added to the Monday.com board, the item ID was saved and stored in a text file. Then, for each update, the old item IDs were read in and used to delete the old items from the Monday.com board and new item IDs were then generated and added to a text file when the requests were added again. 
 <br>
 Error checking and overall code flow was done in the way that I saw it most useful. 
+</p>
+
 --- 
 
 ### References and Links
@@ -32,4 +36,5 @@ BambooHR: <a href="https://bamboohr.com">bamboohr.com</a>
 <br>
 BambooHR API reference: <a href="https://documentation.bamboohr.com/reference/">documentation.bamboohr.com/reference</a>
 </p>
+
 ---
