@@ -19,12 +19,17 @@ Error checking and overall code flow was done in the way that I saw it most usef
 --- 
 
 ### References and Links
+<p>
 Kolla: <a href="https://getkolla.com">getkolla.com</a>
+<br>
 Kolla documentation: <a href="https://docs.getkolla.com/kolla/">docs.getkolla.com</a>
 <br><br>
 Monday.com: <a href="https://monday.com">monday.com</a>
+<br>
 Monday.com API reference: <a href="https://developer.monday.com/api-reference/docs">developer.monday.com/api-reference/docs</a>
 <br><br>
 BambooHR: <a href="https://bamboohr.com">bamboohr.com</a>
+<br>
 BambooHR API reference: <a href="https://documentation.bamboohr.com/reference/">documentation.bamboohr.com/reference</a>
+</p>
 ---
