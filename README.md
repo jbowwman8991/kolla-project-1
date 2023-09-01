@@ -1,10 +1,10 @@
 # Kolla Project 1
-<br><br>
----
 
 ### Description 
 <br><br>
+<p>
 This project was designed as a learning experience using the KollaConnect platform. The idea was to integrate two softwares into a usable workflow to improve the flow between the two and minimize human intervention. 
+</p>
 ---
 
 ### Execution 
